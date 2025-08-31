@@ -2,6 +2,8 @@ from decimal import Decimal
 from typing import Annotated, Optional
 from bson import Decimal128
 from pydantic import AfterValidator, Field
+from datetime import datetime, timezone  # Import adicionado
+
 from store.schemas.base import BaseSchemaMixin, OutSchema
 
 
@@ -31,6 +33,12 @@ class ProductUpdate(BaseSchemaMixin):
     quantity: Optional[int] = Field(None, description="Product quantity")
     price: Optional[Decimal_] = Field(None, description="Product price")
     status: Optional[bool] = Field(None, description="Product status")
+
+    # Anotação: Resolvendo a parte do desafio sobre o timestamp automático.
+    # Adicionei o campo `updated_at` aqui. O `default_factory` faz com que
+    # o Pydantic chame a função `datetime.now()` toda vez que um produto é
+    # atualizado, preenchendo o campo com a data e hora atuais.
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ProductUpdateOut(ProductOut):
