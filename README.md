@@ -1,189 +1,63 @@
-# TDD Project
+# Criando Uma API com FastAPI Utilizando TDD - Resolução do Desafio Final DIO
 
-## O que é TDD?
-TDD é uma sigla para `Test Driven Development`, ou Desenvolvimento Orientado a Testes. A ideia do TDD é que você trabalhe em ciclos.
+Este projeto é um fork da `Store API`, desenvolvido como parte da resolução de um desafio prático da plataforma **DIO (Digital Innovation One)**. O foco principal deste repositório é a implementação das funcionalidades solicitadas no desafio, aprimorando uma API construída com FastAPI e TDD.
 
-### Ciclo do TDD
-![C4](/docs/img/img-tdd.png)
+## O Desafio Final Resolvido
 
-### Vantagens do TDD
-- entregar software de qualidade;
-- testar procurando possíveis falhas;
-- criar testes de integração, testes isolados (unitários);
-- evitar escrever códigos complexos ou que não sigam os pré-requisitos necessários;
+O objetivo foi implementar uma série de melhorias e novas funcionalidades na API existente. Abaixo estão os detalhes de cada requisito do desafio e como foram solucionados:
 
-A proposta do TDD é que você codifique antes mesmo do código existir, isso nos garante mais qualidade no nosso projeto. Além de que, provavelmente se você deixar pra fazer os testes no final, pode acabar não fazendo. Com isso, sua aplicação perde qualidade e está muito mais propensa a erros.
+### 1. Create: Tratamento de Exceções na Criação
+- **Requisito:** Mapear uma exceção para erros durante a inserção de dados e capturá-la na controller para retornar uma mensagem amigável.
+- **Solução Implementada:**
+    - Foi criada uma exceção customizada `InsertionError`.
+    - O `ProductUsecase` agora utiliza um bloco `try...except` que lança essa exceção caso ocorra um erro do MongoDB.
+    - Na aplicação principal (`main.py`), foi adicionado um `@app.exception_handler` que captura a `InsertionError` e retorna uma resposta `HTTP 422 Unprocessable Entity` com uma mensagem de erro clara, evitando que a aplicação quebre com um erro 500 genérico.
 
-# Store API
-## Resumo do projeto
-Este documento traz informações do desenvolvimento de uma API em FastAPI a partir do TDD.
+### 2. Update: Lógica de Atualização Aprimorada
+- **Requisito:** Modificar o método de atualização para retornar `Not Found` se o produto não existir e garantir que o campo `updated_at` seja preenchido com a data e hora atuais.
+- **Solução Implementada:**
+    - **Verificação de Existência:** Antes de tentar atualizar, o método `update` agora verifica se o produto existe no banco de dados. Se não existir, a API retorna um erro `HTTP 404 Not Found`.
+    - **Timestamp Automático:** No schema `ProductUpdate`, foi adicionado o campo `updated_at` com um `default_factory` do Pydantic. Isso garante que, a cada modificação, o campo seja preenchido automaticamente com o timestamp UTC atual.
 
-## Objetivo
-Essa aplicação tem como objetivo principal trazer conhecimentos sobre o TDD, na prática, desenvolvendo uma API com o Framework Python, FastAPI. Utilizando o banco de dados MongoDB, para validações o Pydantic, para os testes Pytest e entre outras bibliotecas.
+### 3. Filtros: Filtragem de Produtos por Preço
+- **Requisito:** Implementar um filtro na rota de listagem para buscar produtos dentro de uma faixa de preço (ex: `price > 5000 and price < 8000`).
+- **Solução Implementada:**
+    - O método `query` do `ProductUsecase` foi modificado para aceitar os parâmetros opcionais `price_min` e `price_max`.
+    - A lógica constrói uma consulta dinâmica para o MongoDB utilizando os operadores `$gt` (maior que) e `$lt` (menor que), permitindo uma filtragem eficiente por faixa de preço diretamente na URL, como por exemplo: `/products/?price_min=5000&price_max=8000`.
 
-## O que é?
-Uma aplicação que:
-- tem fins educativos;
-- permite o aprendizado prático sobre TDD com FastAPI + Pytest;
+## Tecnologias Utilizadas
+- **Framework:** FastAPI
+- **Banco de Dados:** MongoDB (com `Motor` para operações assíncronas)
+- **Validação de Dados:** Pydantic
+- **Testes:** Pytest
+- **Gerenciamento de Dependências:** Poetry
+- **Ambiente:** Pyenv
 
-## O que não é?
-Uma aplicação que:
-- se comunica com apps externas;
+## Como Preparar o Ambiente
 
+O projeto utiliza `Pyenv` para gerenciamento da versão do Python e `Poetry` para gerenciamento de dependências e do ambiente virtual.
 
-## Solução Proposta
-Desenvolvimento de uma aplicação simples a partir do TDD, que permite entender como criar tests com o `pytest`. Construindo testes de Schemas, Usecases e Controllers (teste de integração).
+1.  **Clone o repositório:**
+    ```bash
+    git clone [URL-DO-SEU-FORK]
+    cd [NOME-DO-SEU-REPOSITORIO]
+    ```
 
-### Arquitetura
-|![C4](/docs/img/store.drawio.png)|
-|:--:|
-| Diagrama de C4 da Store API |
+2.  **Instale a versão correta do Python (se necessário):**
+    ```bash
+    pyenv install 3.11.8 
+    pyenv local 3.11.8
+    ```
 
-### Banco de dados - MongoDB
-|![C4](/docs/img/product.drawio.png)|
-|:--:|
-| Database - Store API |
+3.  **Instale as dependências com o Poetry:**
+    ```bash
+    poetry install
+    ```
 
+4.  **Execute a aplicação (usando o servidor Uvicorn):**
+    ```bash
+    poetry run uvicorn store.main:app --reload
+    ```
 
-## StoreAPI
-### Diagramas de sequência para o módulo de Produtos
-#### Diagrama de criação de produto
-
-```mermaid
-sequenceDiagram
-    title Create Product
-    Client->>+API: Request product creation
-    Note right of Client: POST /products
-
-    API->>API: Validate body
-
-    alt Invalid body
-        API->Client: Error Response
-        Note right of Client: Status Code: 422 - Unprocessable Entity
-    end
-
-    API->>+Database: Request product creation
-    alt Error on insertion
-        API->Client: Error Response
-        note right of Client: Status Code: 500 - Internal Server Error
-        end
-    Database->>-API: Successfully created
-
-    API->>-Client: Successful Response
-    Note right of Client: Status Code: 201 - Created
-
-```
-#### Diagrama de listagem de produtos
-
-```mermaid
-sequenceDiagram
-    title List Products
-    Client->>+API: Request products list
-    Note right of Client: GET /products
-
-    API->>+Database: Request products list
-
-    Database->>-API: Successfully queried
-
-    API->>-Client: Successful Response
-    Note right of Client: Status Code: 200 - Ok
-```
-
-#### Diagrama de detalhamento de um produto
-
-```mermaid
-sequenceDiagram
-    title Get Product
-    Client->>+API: Request product
-    Note right of Client: GET /products/{id}<br/> Path Params:<br/>    - id: <id>
-
-    API->>+Database: Request product
-    alt Error on query
-        API->Client: Error Response
-        Note right of Client: Status Code: 500 - Internal Server Error
-    else Product not found
-        API->Client: Error Response
-        Note right of Client: Status Code: 404 - Not Found
-        end
-
-    Database->>-API: Successfully queried
-
-    API->>-Client: Successful Response
-    Note right of Client: Status Code: 200 - Ok
-```
-#### Diagrama de atualização de produto
-
-```mermaid
-sequenceDiagram
-    title PUT Product
-    Client->>+API: Request product update
-    Note right of Client: PUT /products/{id}<br/> Path Params:<br/>    - id: <id>
-
-    API->>API: Validate body
-
-    alt Invalid body
-        API->Client: Error Response
-        Note right of Client: Status Code: 422 - Unprocessable Entity
-    end
-
-    API->>+Database: Request product
-    alt Product not found
-        API->Client: Error Response
-        Note right of Client: Status Code: 404 - Not Found
-        end
-
-    Database->>-API: Successfully updated
-
-    API->>-Client: Successful Response
-    Note right of Client: Status Code: 200 - Ok
-```
-
-#### Diagrama de exclusão de produto
-
-```mermaid
-sequenceDiagram
-    title Delete Product
-    Client->>+API: Request product delete
-    Note right of Client: DELETE /products/{id}<br/> Path Params:<br/>    - id: <id>
-
-    API->>+Database: Request product
-    alt Product not found
-        API->Client: Error Response
-        Note right of Client: Status Code: 404 - Not Found
-        end
-
-    Database->>-API: Successfully deleted
-
-    API->>-Client: Successful Response
-    Note right of Client: Status Code: 204 - No content
-```
-
-## Desafio Final
-- Create
-    - Mapear uma exceção, caso dê algum erro de inserção e capturar na controller
-- Update
-    - Modifique o método de patch para retornar uma exceção de Not Found, quando o dado não for encontrado
-    - a exceção deve ser tratada na controller, pra ser retornada uma mensagem amigável pro usuário
-    - ao alterar um dado, a data de updated_at deve corresponder ao time atual, permitir modificar updated_at também
-- Filtros
-    - cadastre produtos com preços diferentes
-    - aplique um filtro de preço, assim: (price > 5000 and price < 8000)
-
-## Preparar ambiente
-
-Vamos utilizar Pyenv + Poetry, link de como preparar o ambiente abaixo:
-
-[poetry-documentation](https://github.com/nayannanara/poetry-documentation/blob/master/poetry-documentation.md)
-
-## Links uteis de documentação
-[mermaid](https://mermaid.js.org/)
-
-[pydantic](https://docs.pydantic.dev/dev/)
-
-[validatores-pydantic](https://docs.pydantic.dev/latest/concepts/validators/)
-
-[model-serializer](https://docs.pydantic.dev/dev/api/functional_serializers/#pydantic.functional_serializers.model_serializer)
-
-[mongo-motor](https://motor.readthedocs.io/en/stable/)
-
-[pytest](https://docs.pytest.org/en/7.4.x/)
+## Projeto Original
+Este fork foi baseado no projeto `TDD Project / Store API`, cujo foco principal era o aprendizado de Desenvolvimento Orientado a Testes (TDD). A estrutura inicial e os conceitos de TDD foram mantidos.
